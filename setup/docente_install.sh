@@ -43,7 +43,7 @@ iface_exists "$IFACE" || { echo "No existe interfaz $IFACE"; exit 1; }
 
 ### ---- Paquetes ----
 export DEBIAN_FRONTEND=noninteractive
-apt autoremove -y
+apt-get autoremove -y
 apt-get update -y
 apt-get install -y dnsmasq nftables docker.io
 enable_service dnsmasq
