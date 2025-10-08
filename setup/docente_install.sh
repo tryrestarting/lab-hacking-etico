@@ -3,9 +3,8 @@
 # Prepara la VM docente como gateway de laboratorio
 # - IP fija LAN (sin WAN)
 # - DHCP + DNS (dnsmasq) para nombres del lab
-# - Firewall (nftables): sin salida fuera de la subred.
-# - Servicios Docker (DVWA, Juice Shop, MailHog).
-# Idempotente. Probado en Debian/Kali (apt) y openSUSE (zypper).
+# - Firewall (nftables): sin salida fuera de la subred
+# - Servicios Docker (DVWA, Juice Shop, MailHog)
 
 set -euo pipefail
 
@@ -35,19 +34,6 @@ DNSMASQ_CONF="/etc/dnsmasq.d/lab.conf"
 NFT_CONF="/etc/nftables.conf"
 
 ### ---- Helpers ----
-need_cmd(){ command -v "$1" >/dev/null 2>&1; }
-pkg_install(){
-  if need_cmd apt-get; then
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update -y
-    apt-get install -y dnsmasq nftables docker.io
-  elif need_cmd zypper; then
-    zypper -n refresh
-    zypper -n in dnsmasq nftables docker
-  else
-    echo "No se encontró apt-get ni zypper. Aborto."; exit 1
-  fi
-}
 enable_service(){ systemctl enable --now "$1" 2>/dev/null || systemctl start "$1" || true; }
 iface_exists(){ ip link show "$1" >/dev/null 2>&1; }
 
@@ -56,7 +42,10 @@ iface_exists(){ ip link show "$1" >/dev/null 2>&1; }
 iface_exists "$IFACE" || { echo "No existe interfaz $IFACE"; exit 1; }
 
 ### ---- Paquetes ----
-pkg_install
+export DEBIAN_FRONTEND=noninteractive
+apt autoremove
+apt-get update -y
+apt-get install -y dnsmasq nftables docker.io
 enable_service dnsmasq
 enable_service nftables
 enable_service docker
