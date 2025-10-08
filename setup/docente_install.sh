@@ -43,7 +43,6 @@ iface_exists "$IFACE" || { echo "No existe interfaz $IFACE"; exit 1; }
 
 ### ---- Paquetes ----
 export DEBIAN_FRONTEND=noninteractive
-apt-get autoremove -y
 apt-get update -y
 apt-get install -y dnsmasq nftables docker.io
 enable_service dnsmasq
@@ -82,6 +81,21 @@ EOF
 
 systemctl restart dnsmasq
 
+### ---- Docker ----
+docker ps -a --format '{{.Names}}' | grep -q '^dvwa-demo$'      && docker rm -f dvwa-demo || true
+docker ps -a --format '{{.Names}}' | grep -q '^juiceshop-demo$' && docker rm -f juiceshop-demo || true
+docker ps -a --format '{{.Names}}' | grep -q '^mailhog-demo$'   && docker rm -f mailhog-demo || true
+
+docker pull "$DVWA_IMAGE"  >/dev/null 2>&1 || true
+docker pull "$JUICE_IMAGE" >/dev/null 2>&1 || true
+docker pull "$MAIL_IMAGE"  >/dev/null 2>&1 || true
+
+docker run -d --name dvwa-demo       --restart unless-stopped -p ${DVWA_PORT}:80    "$DVWA_IMAGE"      >/dev/null 2>&1 || true
+docker run -d --name juiceshop-demo  --restart unless-stopped -p ${JUICE_PORT}:3000 "$JUICE_IMAGE"     >/dev/null 2>&1 || true
+docker run -d --name mailhog-demo    --restart unless-stopped -p ${MAIL_UI_PORT}:8025 -p ${MAIL_SMTP_PORT}:1025 "$MAIL_IMAGE" >/dev/null 2>&1 || true
+
+enable_service docker
+
 ### ---- nftables: bloquear salida fuera de la subred del lab ----
 nft flush ruleset
 cat > "$NFT_CONF" <<EOF
@@ -103,21 +117,6 @@ table inet lab {
 }
 EOF
 systemctl restart nftables
-
-### ---- Docker ----
-docker ps -a --format '{{.Names}}' | grep -q '^dvwa-demo$'      && docker rm -f dvwa-demo || true
-docker ps -a --format '{{.Names}}' | grep -q '^juiceshop-demo$' && docker rm -f juiceshop-demo || true
-docker ps -a --format '{{.Names}}' | grep -q '^mailhog-demo$'   && docker rm -f mailhog-demo || true
-
-docker pull "$DVWA_IMAGE"  >/dev/null 2>&1 || true
-docker pull "$JUICE_IMAGE" >/dev/null 2>&1 || true
-docker pull "$MAIL_IMAGE"  >/dev/null 2>&1 || true
-
-docker run -d --name dvwa-demo       --restart unless-stopped -p ${DVWA_PORT}:80    "$DVWA_IMAGE"      >/dev/null 2>&1 || true
-docker run -d --name juiceshop-demo  --restart unless-stopped -p ${JUICE_PORT}:3000 "$JUICE_IMAGE"     >/dev/null 2>&1 || true
-docker run -d --name mailhog-demo    --restart unless-stopped -p ${MAIL_UI_PORT}:8025 -p ${MAIL_SMTP_PORT}:1025 "$MAIL_IMAGE" >/dev/null 2>&1 || true
-
-enable_service docker
 
 ### ---- Salida / checks ----
 echo
